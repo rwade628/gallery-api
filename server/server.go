@@ -7,9 +7,10 @@ import (
 )
 
 // Define all middlewares to use then set up the API.
-func Setup(r *gin.Engine) {
+func Setup(r *gin.Engine, path, dbpath string) {
 	// Limit request size.
 	r.Use(middleware.HandleErrors())
+	r.Use(middleware.SetDBPath(dbpath))
 
-	http.Initialize(r)
+	http.Initialize(r, path)
 }

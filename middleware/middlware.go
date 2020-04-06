@@ -4,6 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func SetDBPath(p string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("DBPath", p)
+		c.Next()
+	}
+}
+
 func HandleErrors() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next() // execute all the handlers
