@@ -1,30 +1,20 @@
 package http
 
 import (
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	v1 "github.com/rwade628/gallery-api/http/v1"
 )
 
 // Define the API.
-func Initialize(r *gin.Engine) {
-	api := r.Group("")
+func Initialize(r *gin.Engine, path string) {
+	r.Use(static.Serve("/", static.LocalFile(path, false)))
+	api := r.Group("/v1")
 	{
-		api.GET("/", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"message": "Hello world!",
-			})
+		api.GET("/galleries", GetGalleries)
+		api.POST("/galleries", AddGallery)
+		api.PUT("/galleries", UpdateGallery)
+		api.DELETE("/galleries", DeleteGallery)
 
-		})
+		api.GET("/tags", GetTags)
 	}
-
-	api = r.Group("/v1")
-	{
-		// api.GET("/galleries", v1.GetAllGalleries)
-		api.GET("/galleries", v1.GetGalleries)
-		api.POST("/galleries", v1.AddGallery)
-		api.PUT("/galleries", v1.UpdateGallery)
-		api.DELETE("/galleries", v1.DeleteGallery)
-
-	}
-
 }
