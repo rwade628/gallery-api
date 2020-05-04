@@ -38,6 +38,8 @@ func addPhotoSet(path, rootPath string, galleriesPtr *[]router.Gallery) error {
 		return err
 	}
 
+	fmt.Println("Adding set with modtime:", fileInfo.ModTime())
+
 	gallery := router.Gallery{
 		Name:      setName,
 		Length:    len(files),
@@ -63,6 +65,7 @@ func getFileInfo(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	return file.Stat()
 }
@@ -71,30 +74,40 @@ func getFiles(files []os.FileInfo, path, rootPath string) ([]router.File, error)
 	var filesToAdd []router.File
 
 	for _, f := range files {
-		filePath := filepath.Join(path, f.Name())
-		if reader, err := os.Open(filePath); err == nil {
-			defer reader.Close()
+		if !strings.Contains(f.Name(), "th_") {
+			filePath := filepath.Join(path, f.Name())
+			reader, err := os.Open(filePath)
+			if err == nil {
 
-			im, _, err := image.DecodeConfig(reader)
-			if err != nil {
+				im, _, err := image.DecodeConfig(reader)
+				if err != nil {
+					return nil, err
+				}
+
+				src, err := filepath.Rel(rootPath, filePath)
+				if err != nil {
+					return nil, err
+				}
+
+				thumbPath := filepath.Join(path, "th_"+f.Name())
+				thumbSrc, err := filepath.Rel(rootPath, thumbPath)
+				if err != nil {
+					return nil, err
+				}
+
+				// fmt.Println("Adding gallery file with src:", src)
+
+				image := router.File{
+					Src:    src,
+					Thumb:  thumbSrc,
+					Width:  im.Width,
+					Height: im.Height,
+				}
+				filesToAdd = append(filesToAdd, image)
+			} else {
 				return nil, err
 			}
-
-			src, err := filepath.Rel(rootPath, filePath)
-			if err != nil {
-				return nil, err
-			}
-
-			fmt.Println("Adding gallery file with src:", src)
-
-			image := router.File{
-				Src:    src,
-				Width:  im.Width,
-				Height: im.Height,
-			}
-			filesToAdd = append(filesToAdd, image)
-		} else {
-			return nil, err
+			reader.Close()
 		}
 	}
 

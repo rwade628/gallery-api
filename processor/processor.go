@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pillash/mp4util"
@@ -42,12 +41,12 @@ func listFiles(rootPath string) error {
 	err := filepath.Walk(rootPath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
+				fmt.Println("Failed walking path")
 				return err
 			}
 			ext := filepath.Ext(path)
 			if ext == ".jpg" || ext == ".jpeg" {
-				re := regexp.MustCompile(`jp[e]g`)
-				moviePath := re.ReplaceAllString(path, "mp4")
+				moviePath := strings.ReplaceAll(path, "jpg", "mp4")
 
 				_, temperr := os.Stat(moviePath)
 				if os.IsNotExist(temperr) {
@@ -74,15 +73,21 @@ func listFiles(rootPath string) error {
 
 	var existingGalleries []router.Gallery
 
-	err = json.NewDecoder(res.Body).Decode(&existingGalleries)
-	if err != nil {
-		return err
+	if res.StatusCode == 200 {
+		err = json.NewDecoder(res.Body).Decode(&existingGalleries)
+		if err != nil {
+			return err
+		}
+	} else {
+		// no galleries existing
+		existingGalleries = []router.Gallery{}
 	}
 
 	return insertGalleries(galleries, existingGalleries)
 }
 
 func insertGalleries(galleries, existingGalleries []router.Gallery) error {
+	fmt.Println("inserting galleries", len(galleries))
 	for _, gallery := range galleries {
 		found := false
 
@@ -133,11 +138,13 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 
 		im, _, err := image.DecodeConfig(reader)
 		if err != nil {
+			fmt.Println("unable to decode image")
 			return err
 		}
 
 		thumbSrc, err := filepath.Rel(rootPath, thumbPath)
 		if err != nil {
+			fmt.Println("unable to get relative thumb path")
 			return err
 		}
 
@@ -150,6 +157,7 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 
 		src, err := filepath.Rel(rootPath, path)
 		if err != nil {
+			fmt.Println("unable to get relative movie path")
 			return err
 		}
 
@@ -163,7 +171,8 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 
 	duration, err := mp4util.Duration(path)
 	if err != nil {
-		return err
+		fmt.Println("unable to get movie duration")
+		duration = 0
 	}
 
 	noRoot := strings.SplitAfter(path, rootPath+"/")[1]
