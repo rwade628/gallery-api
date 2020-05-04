@@ -20,6 +20,7 @@ type Gallery struct {
 
 type File struct {
 	Src    string `json:"src"`
+	Thumb  string `json:"thumb"`
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
 }
