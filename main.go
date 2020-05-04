@@ -35,6 +35,6 @@ func init() {
 	flag.StringVar(&path, "p", ".", usage+" (shorthand)")
 
 	dbusage := "Path that db file will be created at"
-	flag.StringVar(&dbpath, "dbpath", ".", dbusage)
-	flag.StringVar(&dbpath, "dbp", ".", dbusage+" (shorthand)")
+	flag.StringVar(&dbpath, "dbpath", "gallery.db", dbusage)
+	flag.StringVar(&dbpath, "dbp", "gallery.db", dbusage+" (shorthand)")
 }
