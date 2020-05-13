@@ -25,7 +25,8 @@ func TestGetV1Galleries(t *testing.T) {
 	}
 
 	var response []router.Gallery
-	err := json.Unmarshal([]byte(w.Body.String()), &response)
+
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	if err != nil {
 		t.Fatalf("expected json unmarshal error %e to be nil", err)
 	}
@@ -57,6 +58,7 @@ func TestPostV1Galleries(t *testing.T) {
 			},
 		},
 	}
+
 	galleryBytes, err := newGallery.MarshalJSON() // tags need to get marshaled properly
 	if err != nil {
 		t.Fatalf("expected newGallery marshals error %e to be nil", err)
@@ -69,7 +71,8 @@ func TestPostV1Galleries(t *testing.T) {
 	}
 
 	var response router.Gallery
-	err = json.Unmarshal([]byte(w.Body.String()), &response)
+
+	err = json.Unmarshal(w.Body.Bytes(), &response)
 	if err != nil {
 		t.Fatalf("expected body unmsrhal error %e to be nil", err)
 	}
@@ -100,6 +103,7 @@ func TestPutV1Galleries(t *testing.T) {
 			},
 		},
 	}
+
 	galleryBytes, err := newGallery.MarshalJSON() // tags need to get marshaled properly
 	if err != nil {
 		t.Fatalf("expected newGallery marshals error %e to be nil", err)
@@ -111,12 +115,44 @@ func TestPutV1Galleries(t *testing.T) {
 	}
 
 	var response router.Gallery
-	err = json.Unmarshal([]byte(w.Body.String()), &response)
+
+	err = json.Unmarshal(w.Body.Bytes(), &response)
 	if err != nil {
 		t.Fatalf("expected body unmsrhal error %e to be nil", err)
 	}
 
 	if newGallery.Name != response.Name {
 		t.Fatalf("expected response gallery name %s to be %s", response.Name, newGallery.Name)
+	}
+}
+
+func TestDeleteV1Galleries(t *testing.T) {
+	dir, _ := ioutil.TempDir(os.TempDir(), "testing")
+	defer os.RemoveAll(dir)
+
+	r := setup(dir)
+
+	deletedGallery := router.Gallery{
+		ID:   1,
+		Name: "test-gallery",
+		Type: "photo",
+		Tags: "tag1,tag2",
+		Files: []router.File{
+			{
+				Src:    "/some/path",
+				Width:  1,
+				Height: 2,
+			},
+		},
+	}
+
+	galleryBytes, err := deletedGallery.MarshalJSON() // tags need to get marshaled properly
+	if err != nil {
+		t.Fatalf("expected newGallery marshals error %e to be nil", err)
+	}
+
+	w := performRequest(r, "DELETE", "/v1/galleries", bytes.NewBuffer(galleryBytes))
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected response status code %d to be %d", w.Code, http.StatusNoContent)
 	}
 }

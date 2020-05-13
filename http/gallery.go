@@ -134,4 +134,31 @@ func UpdateGallery(c *gin.Context) {
 
 	c.String(http.StatusOK, string(bytes))
 }
-func DeleteGallery(c *gin.Context) {}
+
+func DeleteGallery(c *gin.Context) {
+	gallery := Gallery{}
+
+	var err error
+
+	if err = c.ShouldBindJSON(&gallery); err != nil {
+		writeError(c, http.StatusBadRequest, err)
+		return
+	}
+
+	dbpath := c.MustGet("DBPath").(string)
+
+	db, err := storm.Open(dbpath)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, err)
+		return
+	}
+	defer db.Close()
+
+	err = db.DeleteStruct(&gallery)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.String(http.StatusNoContent, "")
+}
