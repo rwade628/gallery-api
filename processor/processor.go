@@ -64,7 +64,7 @@ func listFiles(rootPath string) error {
 		return err
 	}
 
-	res, err := http.Get("http://localhost:8080/v1/galleries")
+	res, err := http.Get("http://localhost:8081/v1/galleries")
 	if err != nil {
 		return err
 	}
@@ -87,17 +87,16 @@ func listFiles(rootPath string) error {
 }
 
 func insertGalleries(galleries, existingGalleries []router.Gallery) error {
-	fmt.Println("inserting galleries", len(galleries))
+	insertedGalleries := 0
 	for _, gallery := range galleries {
 		found := false
 
-		for _, existingGallery := range existingGalleries {
+		for i, existingGallery := range existingGalleries {
 			if gallery.Files[0].Src == existingGallery.Files[0].Src {
-				fmt.Println("Found an existing gallery")
-
+				existingGalleries = append(existingGalleries[:i], existingGalleries[i+1:]...)
 				found = true
 
-				break
+				continue
 			}
 		}
 
@@ -107,7 +106,7 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 				return err
 			}
 
-			res, err := http.Post("http://localhost:8080/v1/galleries", "application/json", bytes.NewBuffer(galleryBytes))
+			res, err := http.Post("http://localhost:8081/v1/galleries", "application/json", bytes.NewBuffer(galleryBytes))
 			if err != nil {
 				fmt.Println("Error creating gallery", err.Error())
 			}
@@ -122,9 +121,44 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 			if res.StatusCode != http.StatusCreated {
 				fmt.Println("Gallery not created", string(body))
 			}
+			insertedGalleries++
 		}
 	}
 
+	deletedGalleries := 0
+	for _, existingGallery := range existingGalleries {
+		galleryBytes, err := existingGallery.MarshalJSON() // tags need to get marshaled properly
+		if err != nil {
+			return err
+		}
+
+		client := &http.Client{}
+
+		req, err := http.NewRequest("DELETE", "http://localhost:8081/v1/galleries", bytes.NewBuffer(galleryBytes))
+		if err != nil {
+			fmt.Println("Error deleting gallery", err.Error())
+		}
+
+		res, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Error deleting gallery", err.Error())
+		}
+
+		defer res.Body.Close()
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+
+		if res.StatusCode != http.StatusNoContent {
+			fmt.Println("Gallery not deleted", string(body))
+		}
+		deletedGalleries++
+	}
+
+	fmt.Println(fmt.Sprintf("inserted %d galleries", insertedGalleries))
+	fmt.Println(fmt.Sprintf("deleted %d galleries", deletedGalleries))
 	return nil
 }
 
@@ -142,7 +176,12 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 			return err
 		}
 
-		thumbSrc, err := filepath.Rel(rootPath, thumbPath)
+		srcPath := rootPath
+		if strings.Contains(rootPath, "/public") {
+			srcPath = strings.TrimSuffix(rootPath, "/public")
+		}
+
+		thumbSrc, err := filepath.Rel(srcPath, thumbPath)
 		if err != nil {
 			fmt.Println("unable to get relative thumb path")
 			return err
@@ -155,7 +194,7 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 		}
 		files = append(files, thumb)
 
-		src, err := filepath.Rel(rootPath, path)
+		src, err := filepath.Rel(srcPath, path)
 		if err != nil {
 			fmt.Println("unable to get relative movie path")
 			return err
@@ -179,12 +218,17 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 	tags := strings.Split(noRoot, "/")
 	tags = tags[:len(tags)-1]
 
+	tagString := "Uncatogorized"
+	if len(tags) > 1 {
+		tagString = strings.Join(tags, ",")
+	}
+
 	gallery := router.Gallery{
 		Name:      strings.Split(info.Name(), ".")[0],
 		Length:    duration,
 		CreatedAt: info.ModTime(),
 		Type:      "movie",
-		Tags:      strings.Join(tags, ","),
+		Tags:      tagString,
 		Files:     files,
 	}
 

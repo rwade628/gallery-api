@@ -18,7 +18,7 @@ func main() {
 
 	server.Setup(r, path, dbpath)
 
-	err := r.Run()
+	err := r.Run(":8081")
 	if err != nil {
 		panic(err)
 	}

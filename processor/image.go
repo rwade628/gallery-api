@@ -38,7 +38,7 @@ func addPhotoSet(path, rootPath string, galleriesPtr *[]router.Gallery) error {
 		return err
 	}
 
-	fmt.Println("Adding set with modtime:", fileInfo.ModTime())
+	// fmt.Println("Adding set with modtime:", fileInfo.ModTime())
 
 	gallery := router.Gallery{
 		Name:      setName,
@@ -81,16 +81,22 @@ func getFiles(files []os.FileInfo, path, rootPath string) ([]router.File, error)
 
 				im, _, err := image.DecodeConfig(reader)
 				if err != nil {
+					fmt.Println(path)
 					return nil, err
 				}
 
-				src, err := filepath.Rel(rootPath, filePath)
+				srcPath := rootPath
+				if strings.Contains(rootPath, "/public") {
+					srcPath = strings.TrimSuffix(rootPath, "/public")
+				}
+
+				src, err := filepath.Rel(srcPath, filePath)
 				if err != nil {
 					return nil, err
 				}
 
 				thumbPath := filepath.Join(path, "th_"+f.Name())
-				thumbSrc, err := filepath.Rel(rootPath, thumbPath)
+				thumbSrc, err := filepath.Rel(srcPath, thumbPath)
 				if err != nil {
 					return nil, err
 				}
