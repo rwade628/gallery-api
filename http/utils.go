@@ -15,6 +15,12 @@ func SelectFilters(queries url.Values, db *storm.DB) (storm.Query, error) {
 			return nil, fmt.Errorf("can only have 1 type of %s", k)
 		}
 		switch k {
+		case "preference":
+			if v[0] == "unset" {
+				matchers = append(matchers, q.Eq("Preference", ""))
+			} else {
+				matchers = append(matchers, q.Eq("Preference", v[0]))
+			}
 		case "type":
 			if v[0] != "all" {
 				matchers = append(matchers, q.Eq("Type", v[0]))

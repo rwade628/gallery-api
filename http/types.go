@@ -8,14 +8,15 @@ import (
 )
 
 type Gallery struct {
-	ID        int         `storm:"id,increment"`
-	Name      string      `json:"name" storm:"index"`
-	Length    int         `json:"length" storm:"index"`
-	CreatedAt time.Time   `json:"createdAt" storm:"index"`
-	Views     int         `json:"views" storm:"index"`
-	Type      GalleryType `json:"type" storm:"index"`
-	Tags      string      `json:"tags" storm:"index"`
-	Files     []File      `json:"files"`
+	ID         int         `storm:"id,increment"`
+	Name       string      `json:"name" storm:"index"`
+	Length     int         `json:"length" storm:"index"`
+	CreatedAt  time.Time   `json:"createdAt" storm:"index"`
+	Views      int         `json:"views" storm:"index"`
+	Type       GalleryType `json:"type" storm:"index"`
+	Tags       string      `json:"tags" storm:"index"`
+	Preference string      `json:"preference" storm:"index"`
+	Files      []File      `json:"files"`
 }
 
 type File struct {

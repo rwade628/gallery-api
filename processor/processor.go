@@ -17,12 +17,15 @@ import (
 	router "github.com/rwade628/gallery-api/http"
 )
 
-var path string
+var path, url string
 
 func init() {
-	usage := "Path that processor will search for files"
-	flag.StringVar(&path, "path", ".", usage)
-	flag.StringVar(&path, "p", ".", usage+" (shorthand)")
+	pathUsage := "Path that processor will search for files"
+	urlUsage := "Base URL for server"
+	flag.StringVar(&path, "path", ".", pathUsage)
+	flag.StringVar(&path, "p", ".", pathUsage+" (shorthand)")
+	flag.StringVar(&url, "url", "http://localhost:8081", urlUsage)
+	flag.StringVar(&url, "u", "http://localhost:8081", urlUsage+" (shorthand)")
 }
 
 func main() {
@@ -64,7 +67,7 @@ func listFiles(rootPath string) error {
 		return err
 	}
 
-	res, err := http.Get("http://localhost:8081/v1/galleries")
+	res, err := http.Get(fmt.Sprintf("%s/v1/galleries", url))
 	if err != nil {
 		return err
 	}
@@ -106,7 +109,7 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 				return err
 			}
 
-			res, err := http.Post("http://localhost:8081/v1/galleries", "application/json", bytes.NewBuffer(galleryBytes))
+			res, err := http.Post(fmt.Sprintf("%s/v1/galleries", url), "application/json", bytes.NewBuffer(galleryBytes))
 			if err != nil {
 				fmt.Println("Error creating gallery", err.Error())
 			}
@@ -134,7 +137,7 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 
 		client := &http.Client{}
 
-		req, err := http.NewRequest("DELETE", "http://localhost:8081/v1/galleries", bytes.NewBuffer(galleryBytes))
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/v1/galleries", url), bytes.NewBuffer(galleryBytes))
 		if err != nil {
 			fmt.Println("Error deleting gallery", err.Error())
 		}
@@ -187,13 +190,6 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 			return err
 		}
 
-		thumb := router.File{
-			Src:    thumbSrc,
-			Width:  im.Width,
-			Height: im.Height,
-		}
-		files = append(files, thumb)
-
 		src, err := filepath.Rel(srcPath, path)
 		if err != nil {
 			fmt.Println("unable to get relative movie path")
@@ -202,6 +198,7 @@ func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Galle
 
 		movie := router.File{
 			Src:    src,
+			Thumb:  thumbSrc,
 			Width:  im.Width,
 			Height: im.Height,
 		}
