@@ -8,7 +8,7 @@ import (
 )
 
 type Gallery struct {
-	ID         int         `storm:"id,increment"`
+	ID         int         `storm:"id,increment" json:"id"`
 	Name       string      `json:"name" storm:"index"`
 	Length     int         `json:"length" storm:"index"`
 	CreatedAt  time.Time   `json:"createdAt" storm:"index"`
@@ -17,6 +17,11 @@ type Gallery struct {
 	Tags       string      `json:"tags" storm:"index"`
 	Preference string      `json:"preference" storm:"index"`
 	Files      []File      `json:"files"`
+	Photos     []File      `json:"photos"`
+	Src        string      `json:"src"`
+	Thumb      string      `json:"thumb"`
+	Width      int         `json:"width"`
+	Height     int         `json:"height"`
 }
 
 type File struct {

@@ -10,17 +10,22 @@ import (
 
 // Define the API.
 func Initialize(r *gin.Engine, path string) {
-	r.Use(static.Serve("/", static.LocalFile(path, false)))
-	api := r.Group("/v1")
+	r.Use(static.Serve("/public", static.LocalFile(path, false)))
+	v1 := r.Group("/v1")
 	{
-		api.GET("/galleries", GetGalleries)
-		api.POST("/galleries", AddGallery)
-		api.PUT("/galleries", UpdateGallery)
-		api.DELETE("/galleries", DeleteGallery)
+		v1.GET("/galleries", GetGalleries)
+		v1.POST("/galleries", AddGallery)
+		v1.PUT("/galleries", UpdateGallery)
+		v1.DELETE("/galleries", DeleteGallery)
 
-		api.GET("/tags", GetTags)
+		v1.GET("/tags", GetTags)
 
-		api.GET("/reindex", ReIndex)
+		v1.GET("/reindex", ReIndex)
+	}
+
+	v2 := r.Group("/v2")
+	{
+		v2.GET("/galleries", GetV2Galleries)
 	}
 }
 
