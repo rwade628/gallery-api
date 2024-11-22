@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -57,16 +58,20 @@ func listFiles(rootPath string) error {
 					setPath := strings.Split(path, "/"+info.Name())[0]
 					err = addPhotoSet(setPath, rootPath, &galleries)
 				}
+				if err != nil {
+					fmt.Println(temperr)
+					fmt.Println("failed adding image")
+				}
 			} else if ext == ".mp4" {
 				err = addMovie(path, rootPath, info, &galleries)
 			}
 			return err
 		})
-
 	if err != nil {
 		return err
 	}
 
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	res, err := http.Get(fmt.Sprintf("%s/v1/galleries", url))
 	if err != nil {
 		return err
@@ -109,6 +114,7 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 				return err
 			}
 
+			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 			res, err := http.Post(fmt.Sprintf("%s/v1/galleries", url), "application/json", bytes.NewBuffer(galleryBytes))
 			if err != nil {
 				fmt.Println("Error creating gallery", err.Error())
@@ -134,8 +140,10 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 		if err != nil {
 			return err
 		}
-
-		client := &http.Client{}
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: tr}
 
 		req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/v1/galleries", url), bytes.NewBuffer(galleryBytes))
 		if err != nil {
