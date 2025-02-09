@@ -4,27 +4,49 @@ import (
 	"fmt"
 	"image"
 	_ "image/jpeg"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	router "github.com/rwade628/gallery-api/http"
 )
 
-func addPhotoSet(path, rootPath string, galleriesPtr *[]router.Gallery) error {
-
+func addPhotoSet(path, rootPath, fullPath string, modTime time.Time, galleriesPtr *[]router.Gallery, existingGalleries *[]router.Gallery) error {
 	galleries := *galleriesPtr
 
-	fileInfo, err := getFileInfo(path)
-	if err != nil {
-		return err
+	// fmt.Println(path, rootPath, fullPath)
+
+	for _, gallery := range *existingGalleries {
+		srcPath := fullPath
+		if strings.Contains(rootPath, "/public") {
+			srcPath = strings.TrimSuffix(rootPath, "/public")
+		}
+		src, err := filepath.Rel(srcPath, fullPath)
+		if err != nil {
+			return err
+		}
+		if src == gallery.Files[0].Src {
+			// fmt.Println("found an existing gallery", src)
+			*galleriesPtr = append(*galleriesPtr, gallery)
+			return nil
+		}
 	}
 
-	setName := fileInfo.Name()
+	pathSplit := strings.Split(path, "/")
+	name := pathSplit[len(pathSplit)-1]
+
+	// fileInfo, err := getFileInfo(path)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// setName := fileInfo.Name()
+	// fmt.Println(setName)
 
 	for _, gallery := range galleries {
-		if gallery.Name == setName {
+		if gallery.Name == name {
 			return nil
 		}
 	}
@@ -33,7 +55,7 @@ func addPhotoSet(path, rootPath string, galleriesPtr *[]router.Gallery) error {
 	tags := strings.Split(noRoot, "/")
 	tags = tags[:len(tags)-1]
 
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return err
 	}
@@ -41,9 +63,9 @@ func addPhotoSet(path, rootPath string, galleriesPtr *[]router.Gallery) error {
 	// fmt.Println("Adding set with modtime:", fileInfo.ModTime())
 
 	gallery := router.Gallery{
-		Name:      setName,
+		Name:      name,
 		Length:    len(files),
-		CreatedAt: fileInfo.ModTime(),
+		CreatedAt: modTime,
 		Type:      "photo",
 		Tags:      strings.Join(tags, ","),
 	}
@@ -70,7 +92,7 @@ func getFileInfo(path string) (os.FileInfo, error) {
 	return file.Stat()
 }
 
-func getFiles(files []os.FileInfo, path, rootPath string) ([]router.File, error) {
+func getFiles(files []fs.DirEntry, path, rootPath string) ([]router.File, error) {
 	var filesToAdd []router.File
 
 	for _, f := range files {

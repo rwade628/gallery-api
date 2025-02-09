@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -42,35 +43,6 @@ func main() {
 func listFiles(rootPath string) error {
 	var galleries []router.Gallery
 
-	err := filepath.Walk(rootPath,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				fmt.Println("Failed walking path")
-				return err
-			}
-			ext := filepath.Ext(path)
-			if ext == ".jpg" || ext == ".jpeg" {
-				moviePath := strings.ReplaceAll(path, "jpg", "mp4")
-
-				_, temperr := os.Stat(moviePath)
-				if os.IsNotExist(temperr) {
-					// jpg is not thumbnail of mp4 so process the gallery
-					setPath := strings.Split(path, "/"+info.Name())[0]
-					err = addPhotoSet(setPath, rootPath, &galleries)
-				}
-				if err != nil {
-					fmt.Println(temperr)
-					fmt.Println("failed adding image")
-				}
-			} else if ext == ".mp4" {
-				err = addMovie(path, rootPath, info, &galleries)
-			}
-			return err
-		})
-	if err != nil {
-		return err
-	}
-
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	res, err := http.Get(fmt.Sprintf("%s/v1/galleries", url))
 	if err != nil {
@@ -89,6 +61,38 @@ func listFiles(rootPath string) error {
 	} else {
 		// no galleries existing
 		existingGalleries = []router.Gallery{}
+	}
+
+	err = filepath.WalkDir(rootPath,
+		func(path string, info os.DirEntry, err error) error {
+			if err != nil {
+				fmt.Println("Failed walking path")
+				return err
+			}
+			ext := filepath.Ext(path)
+			if strings.Contains(path, "movies") || strings.Contains(path, "other") {
+
+				if ext == ".jpg" || ext == ".jpeg" {
+					moviePath := strings.ReplaceAll(path, "jpg", "mp4")
+
+					_, temperr := os.Stat(moviePath)
+					if os.IsNotExist(temperr) {
+						// jpg is not thumbnail of mp4 so process the gallery
+						setPath := strings.Split(path, "/"+info.Name())[0]
+						i, _ := info.Info()
+						err = addPhotoSet(setPath, rootPath, path, i.ModTime(), &galleries, &existingGalleries)
+
+						return filepath.SkipDir
+					}
+				} else if ext == ".mp4" {
+					err = addMovie(path, rootPath, info, &galleries, &existingGalleries)
+				}
+				return err
+			}
+			return nil
+		})
+	if err != nil {
+		return err
 	}
 
 	return insertGalleries(galleries, existingGalleries)
@@ -122,7 +126,7 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 
 			defer res.Body.Close()
 
-			body, err := ioutil.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
 			if err != nil {
 				return err
 			}
@@ -173,7 +177,18 @@ func insertGalleries(galleries, existingGalleries []router.Gallery) error {
 	return nil
 }
 
-func addMovie(path, rootPath string, info os.FileInfo, galleries *[]router.Gallery) error {
+func addMovie(path, rootPath string, d os.DirEntry, galleries *[]router.Gallery, existingGalleries *[]router.Gallery) error {
+	info, err := d.Info()
+	if err != nil {
+		return err
+	}
+
+	for _, gallery := range *existingGalleries {
+		if d.Name() == gallery.Name {
+			return nil
+		}
+	}
+
 	thumbPath := strings.ReplaceAll(path, "mp4", "jpg")
 
 	var files []router.File
